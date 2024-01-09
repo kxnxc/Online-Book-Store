@@ -8,6 +8,7 @@ import com.example.onlinebookstore.model.User;
 import com.example.onlinebookstore.repository.user.UserRepository;
 import com.example.onlinebookstore.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponseDto register(UserRegistrationRequestDto requestDto)
@@ -24,6 +26,7 @@ public class UserServiceImpl implements UserService {
                     + requestDto.getEmail() + ", already exists");
         }
         User user = userMapper.toModel(requestDto);
+        user.setPassword(passwordEncoder.encode(requestDto.getPassword()));
         userRepository.save(user);
         return userMapper.toDto(user);
     }
