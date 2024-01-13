@@ -46,7 +46,7 @@ public class CustomGlobalExceptionHandler extends ResponseEntityExceptionHandler
     }
 
     @ExceptionHandler(RegistrationException.class)
-    public ResponseEntity<Object> handleRegistrationException(RegistrationException e) {
+    public ResponseEntity<Object> handleRegistrationAndLoginExceptions(RegistrationException e) {
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("message", e.getMessage());
         info.put("timestamp", LocalDateTime.now());
