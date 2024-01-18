@@ -1,6 +1,7 @@
 package com.example.onlinebookstore.service.impl;
 
 import com.example.onlinebookstore.dto.book.BookDto;
+import com.example.onlinebookstore.dto.book.BookDtoWithoutCategoryIds;
 import com.example.onlinebookstore.dto.book.BookSearchParametersDto;
 import com.example.onlinebookstore.dto.book.CreateBookRequestDto;
 import com.example.onlinebookstore.exception.EntityNotFoundException;
@@ -8,6 +9,7 @@ import com.example.onlinebookstore.mapper.BookMapper;
 import com.example.onlinebookstore.model.Book;
 import com.example.onlinebookstore.repository.book.BookRepository;
 import com.example.onlinebookstore.repository.book.BookSpecificationBuilder;
+import com.example.onlinebookstore.repository.category.CategoryRepository;
 import com.example.onlinebookstore.service.BookService;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 public class BookServiceImpl implements BookService {
 
     private final BookRepository bookRepository;
+    private final CategoryRepository categoryRepository;
     private final BookMapper bookMapper;
     private final BookSpecificationBuilder bookSpecificationBuilder;
 
@@ -60,6 +63,11 @@ public class BookServiceImpl implements BookService {
         book.setAuthor(requestDto.getAuthor());
         book.setCoverImage(requestDto.getCoverImage());
         book.setDescription(requestDto.getDescription());
+        book.setCategories(requestDto
+                .getCategoryIds()
+                .stream()
+                .map(categoryRepository::getById)
+                .collect(Collectors.toSet()));
         return bookMapper.toDto(bookRepository.save(book));
     }
 
@@ -70,6 +78,15 @@ public class BookServiceImpl implements BookService {
                 .findAll(bookSpecification, pageable)
                 .stream()
                 .map(bookMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    public List<BookDtoWithoutCategoryIds> getAllByCategoryId(Long id) {
+        return bookRepository
+                .findAllByCategoriesId(id)
+                .stream()
+                .map(bookMapper::toBookDtoWithoutCategoryIds)
                 .toList();
     }
 }
