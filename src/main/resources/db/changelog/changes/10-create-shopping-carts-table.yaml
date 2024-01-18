@@ -18,7 +18,6 @@ databaseChangeLog:
                   type: bigint
                   constraints:
                     foreignKeyName: fk_shopping_carts_user
-                    primaryKey: true
                     references: users(id)
                     nullable: false
               - column:
