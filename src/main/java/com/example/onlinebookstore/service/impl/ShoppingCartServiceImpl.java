@@ -29,8 +29,8 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
 
     @Override
     public ShoppingCartResponseDto getShoppingCart(String email) {
-        ShoppingCart shoppingCart = getCartOrCreate(email);
-        shoppingCart.setCartItems(cartItemRepository.getAllByShoppingCart(shoppingCart));
+        ShoppingCart shoppingCart = getCartOrCreate(email); // тут должен быть объект с cartItems без нижней строки
+        //shoppingCart.setCartItems(cartItemRepository.getAllByShoppingCart(shoppingCart));
         return shoppingCartMapper.toDto(shoppingCart);
     }
 
@@ -66,7 +66,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     private ShoppingCart getCartOrCreate(String email) {
         User user = userRepository.getByEmail(email);
         Optional<ShoppingCart> optionalShoppingCart = shoppingCartRepository
-                .findByUser(user);
+                .findShoppingCartByUserId(user.getId());
         return optionalShoppingCart
                 .orElseGet(() -> createCart(user));
     }

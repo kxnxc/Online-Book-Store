@@ -16,6 +16,7 @@ import com.example.onlinebookstore.repository.orderitem.OrderItemRepository;
 import com.example.onlinebookstore.repository.shoppingcart.ShoppingCartRepository;
 import com.example.onlinebookstore.repository.user.UserRepository;
 import com.example.onlinebookstore.service.OrderService;
+import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -35,10 +36,11 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
 
     @Override
+    @Transactional
     public OrderResponseDto createOrder(String email, OrderRequestDto requestDto) {
         User user = userRepository.getByEmail(email);
         ShoppingCart shoppingCart = shoppingCartRepository
-                .findByUser(user).orElseThrow(() ->
+                .findShoppingCartByUserId(user.getId()).orElseThrow(() ->
                         new EntityNotFoundException("Can't create order "
                                 + "without existing shopping cart"));
         Order order = new Order();
@@ -65,6 +67,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
     public OrderResponseDto updateOrderStatus(Long id, OrderStatusRequestDto requestDto) {
         Order order = orderRepository
                 .findById(id)
