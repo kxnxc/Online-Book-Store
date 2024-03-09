@@ -13,24 +13,26 @@ import com.example.onlinebookstore.model.User;
 import com.example.onlinebookstore.repository.cartitem.CartItemRepository;
 import com.example.onlinebookstore.repository.order.OrderRepository;
 import com.example.onlinebookstore.repository.orderitem.OrderItemRepository;
-import com.example.onlinebookstore.repository.shoppingcart.ShoppingCartRepository;
 import com.example.onlinebookstore.repository.user.UserRepository;
 import com.example.onlinebookstore.service.OrderService;
-import jakarta.transaction.Transactional;
+import com.example.onlinebookstore.service.ShoppingCartService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
 public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ShoppingCartRepository shoppingCartRepository;
+    private final ShoppingCartService shoppingCartService;
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
     private final OrderMapper orderMapper;
@@ -39,16 +41,14 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponseDto createOrder(String email, OrderRequestDto requestDto) {
         User user = userRepository.getByEmail(email);
-        ShoppingCart shoppingCart = shoppingCartRepository
-                .findShoppingCartByUserId(user.getId()).orElseThrow(() ->
-                        new EntityNotFoundException("Can't create order "
-                                + "without existing shopping cart"));
+        ShoppingCart shoppingCart = shoppingCartService.getInitializedCartEntity(email);
         Order order = new Order();
         order.setShippingAddress(requestDto.getShippingAddress());
         order.setOrderDate(LocalDateTime.now());
         order.setUser(user);
         order.setStatus(Order.Status.PENDING);
         order.setTotal(getTotalPrice(shoppingCart));
+        orderRepository.save(order);
         order.setOrderItems(createOrderItems(shoppingCart, order));
         cartItemRepository.deleteAll(shoppingCart.getCartItems());
         return orderMapper.toDto(orderRepository.save(order));
@@ -57,13 +57,17 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<OrderResponseDto> getOrderHistory(String email) {
         User user = userRepository.getByEmail(email);
-        List<Order> orders = orderRepository.getAllByUser(user);
-        return orders
+        List<OrderResponseDto> orderResponseDtos = new ArrayList<>();
+        List<Order> allByUser = orderRepository.getAllByUser(user);
+        List<Order> orders = allByUser
                 .stream()
-                .map(order -> {
-                    order.setOrderItems(orderItemRepository.findAllByOrder(order));
-                    return order;
-                }).map(orderMapper::toDto).toList();
+                .peek(o -> o.getOrderItems()
+                        .forEach(ci -> ci.setOrder(null)))
+                .toList();
+        for (Order order: orders) {
+            orderResponseDtos.add(orderMapper.toDto(order));
+        }
+        return orderResponseDtos;
     }
 
     @Override
@@ -74,6 +78,7 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("Can't find order with id "
                                 + id));
+
         Order.Status updatedStatus = null;
         for (Order.Status s: Order.Status.values()) {
             if (s.toString().equalsIgnoreCase(requestDto.getStatus())) {
@@ -100,16 +105,20 @@ public class OrderServiceImpl implements OrderService {
         return totalPrice;
     }
 
-    private Set<OrderItem> createOrderItems(ShoppingCart shoppingCart,
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Set<OrderItem> createOrderItems(ShoppingCart shoppingCart,
                                             Order order) {
+        Order mockOrder = new Order();
+        mockOrder.setId(order.getId());
         Set<CartItem> cartItems = shoppingCart.getCartItems();
         Set<OrderItem> orderItems = new HashSet<>();
         for (CartItem cartItem: cartItems) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setBook(cartItem.getBook());
-            orderItem.setPrice(cartItem.getBook().getPrice());
-            orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setOrder(order);
+            OrderItem orderItem = OrderItem.builder()
+                    .book(cartItem.getBook())
+                    .price(cartItem.getBook().getPrice())
+                    .quantity(cartItem.getQuantity())
+                    .order(mockOrder)
+                    .build();
             orderItems.add(orderItemRepository.save(orderItem));
         }
         return orderItems;

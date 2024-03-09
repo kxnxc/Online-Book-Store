@@ -3,16 +3,10 @@ package com.example.onlinebookstore.controller;
 import com.example.onlinebookstore.dto.order.OrderRequestDto;
 import com.example.onlinebookstore.dto.order.OrderResponseDto;
 import com.example.onlinebookstore.dto.order.OrderStatusRequestDto;
-import com.example.onlinebookstore.model.CartItem;
-import com.example.onlinebookstore.model.ShoppingCart;
-import com.example.onlinebookstore.repository.shoppingcart.ShoppingCartRepository;
 import com.example.onlinebookstore.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -31,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService orderService;
-    private final ShoppingCartRepository shoppingCartRepository;
 
     @Operation(summary = "Get order history",
             description = "Get order history for authenticated user")
@@ -60,12 +53,5 @@ public class OrderController {
                                               @RequestBody OrderStatusRequestDto
                                                       requestDto) {
         return orderService.updateOrderStatus(id, requestDto);
-    }
-
-    @GetMapping("/asd")
-    public ShoppingCart asd() {
-        ShoppingCart shoppingCartByUserId = shoppingCartRepository
-                .findById(4L).orElseThrow(RuntimeException::new);
-        return shoppingCartByUserId;
     }
 }
