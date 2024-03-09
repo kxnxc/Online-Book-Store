@@ -25,3 +25,9 @@ databaseChangeLog:
       file: db/changelog/changes/12-create-orders-table.yaml
   - include:
       file: db/changelog/changes/13-create-order-items-table.yaml
+  - include:
+      file: db/changelog/changes/14-drop-order-items-foreign-keys.yaml
+  - include:
+      file: db/changelog/changes/15-add-order-items-foreign-keys.yaml
+  - include:
+      file: db/changelog/changes/16-fix-cart-items-foreign-keys.yaml

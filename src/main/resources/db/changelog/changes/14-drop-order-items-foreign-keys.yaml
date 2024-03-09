@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: drop-order-items-foreign-keys
+      author: root
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: order_items
+            constraintName: fk_order_items_order
+        - dropColumn:
+            tableName: order_items
+            columnName: order_id
+        - dropForeignKeyConstraint:
+            baseTableName: order_items
+            constraintName: fk_order_items_book
+        - dropColumn:
+            tableName: order_items
+            columnName: book_id
