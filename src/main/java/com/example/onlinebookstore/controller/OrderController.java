@@ -3,6 +3,8 @@ package com.example.onlinebookstore.controller;
 import com.example.onlinebookstore.dto.order.OrderRequestDto;
 import com.example.onlinebookstore.dto.order.OrderResponseDto;
 import com.example.onlinebookstore.dto.order.OrderStatusRequestDto;
+import com.example.onlinebookstore.dto.orderitem.OrderItemResponseDto;
+import com.example.onlinebookstore.service.OrderItemService;
 import com.example.onlinebookstore.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/orders")
 public class OrderController {
     private final OrderService orderService;
+    private final OrderItemService orderItemService;
 
     @Operation(summary = "Get order history",
             description = "Get order history for authenticated user")
@@ -53,5 +56,22 @@ public class OrderController {
                                               @RequestBody OrderStatusRequestDto
                                                       requestDto) {
         return orderService.updateOrderStatus(id, requestDto);
+    }
+
+    @Operation(summary = "Get all order items for order",
+            description = "Get all order items by order id")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
+    @GetMapping("/{orderId}/items")
+    public List<OrderItemResponseDto> getAllOrderItemsForOrder(@PathVariable
+                                                               Long orderId) {
+        return orderItemService.getAllOrderItemsByOrderId(orderId);
+    }
+
+    @Operation(summary = "Get specific order item by id",
+            description = "Get specific order item by id")
+    @PreAuthorize("hasAnyAuthority('USER', 'ADMIN')")
+    @GetMapping("/{orderId}/items/{itemId}")
+    public OrderItemResponseDto getSpecificOrderItem(@PathVariable Long itemId) {
+        return orderItemService.getOrderItemById(itemId);
     }
 }

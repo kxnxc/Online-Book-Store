@@ -5,7 +5,6 @@ import com.example.onlinebookstore.dto.order.OrderResponseDto;
 import com.example.onlinebookstore.dto.order.OrderStatusRequestDto;
 import com.example.onlinebookstore.exception.EntityNotFoundException;
 import com.example.onlinebookstore.mapper.OrderMapper;
-import com.example.onlinebookstore.model.CartItem;
 import com.example.onlinebookstore.model.Order;
 import com.example.onlinebookstore.model.OrderItem;
 import com.example.onlinebookstore.model.ShoppingCart;
@@ -18,13 +17,11 @@ import com.example.onlinebookstore.service.OrderService;
 import com.example.onlinebookstore.service.ShoppingCartService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
@@ -57,17 +54,9 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<OrderResponseDto> getOrderHistory(String email) {
         User user = userRepository.getByEmail(email);
-        List<OrderResponseDto> orderResponseDtos = new ArrayList<>();
-        List<Order> allByUser = orderRepository.getAllByUser(user);
-        List<Order> orders = allByUser
-                .stream()
-                .peek(o -> o.getOrderItems()
-                        .forEach(ci -> ci.setOrder(null)))
+        return orderRepository.getAllByUser(user)
+                .stream().map(orderMapper::toDto)
                 .toList();
-        for (Order order: orders) {
-            orderResponseDtos.add(orderMapper.toDto(order));
-        }
-        return orderResponseDtos;
     }
 
     @Override
@@ -78,49 +67,34 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() ->
                         new EntityNotFoundException("Can't find order with id "
                                 + id));
-
-        Order.Status updatedStatus = null;
-        for (Order.Status s: Order.Status.values()) {
-            if (s.toString().equalsIgnoreCase(requestDto.getStatus())) {
-                updatedStatus = s;
-            }
-        }
-        if (updatedStatus == null) {
-            throw new RuntimeException("Can't find status with name "
-                    + requestDto.getStatus());
-        }
-        order.setStatus(updatedStatus);
-        orderRepository.save(order);
-        order.setOrderItems(orderItemRepository.findAllByOrder(order));
-        return orderMapper.toDto(order);
+        order.setStatus(requestDto.getStatus());
+        return orderMapper.toDto(orderRepository.save(order));
     }
 
     private BigDecimal getTotalPrice(ShoppingCart shoppingCart) {
-        BigDecimal totalPrice = BigDecimal.ZERO;
-        for (CartItem cartItem: shoppingCart.getCartItems()) {
-            BigDecimal bookPrice = cartItem.getBook().getPrice();
-            BigDecimal quantity = BigDecimal.valueOf(cartItem.getQuantity());
-            totalPrice = totalPrice.add(bookPrice.multiply(quantity));
-        }
-        return totalPrice;
+        return shoppingCart
+                .getCartItems()
+                .stream()
+                .map(cartItem -> {
+                    BigDecimal bookPrice = cartItem.getBook().getPrice();
+                    BigDecimal quantity = BigDecimal.valueOf(cartItem.getQuantity());
+                    return bookPrice.multiply(quantity);
+                }).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Set<OrderItem> createOrderItems(ShoppingCart shoppingCart,
+    private Set<OrderItem> createOrderItems(ShoppingCart shoppingCart,
                                             Order order) {
         Order mockOrder = new Order();
         mockOrder.setId(order.getId());
-        Set<CartItem> cartItems = shoppingCart.getCartItems();
-        Set<OrderItem> orderItems = new HashSet<>();
-        for (CartItem cartItem: cartItems) {
-            OrderItem orderItem = OrderItem.builder()
-                    .book(cartItem.getBook())
-                    .price(cartItem.getBook().getPrice())
-                    .quantity(cartItem.getQuantity())
-                    .order(mockOrder)
-                    .build();
-            orderItems.add(orderItemRepository.save(orderItem));
-        }
-        return orderItems;
+        return shoppingCart
+                .getCartItems()
+                .stream()
+                .map(cartItem -> orderItemRepository.save(OrderItem.builder()
+                        .book(cartItem.getBook())
+                        .price(cartItem.getBook().getPrice())
+                        .quantity(cartItem.getQuantity())
+                        .order(mockOrder)
+                        .build()))
+                .collect(Collectors.toSet());
     }
 }
