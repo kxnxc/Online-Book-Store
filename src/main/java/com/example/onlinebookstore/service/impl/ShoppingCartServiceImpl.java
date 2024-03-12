@@ -13,6 +13,7 @@ import com.example.onlinebookstore.repository.cartitem.CartItemRepository;
 import com.example.onlinebookstore.repository.shoppingcart.ShoppingCartRepository;
 import com.example.onlinebookstore.repository.user.UserRepository;
 import com.example.onlinebookstore.service.ShoppingCartService;
+import jakarta.transaction.Transactional;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,7 +31,6 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public ShoppingCartResponseDto getShoppingCart(String email) {
         ShoppingCart shoppingCart = getCartOrCreate(email);
-        shoppingCart.setCartItems(cartItemRepository.getAllByShoppingCart(shoppingCart));
         return shoppingCartMapper.toDto(shoppingCart);
     }
 
@@ -41,8 +41,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         cartItem.setShoppingCart(shoppingCart);
         cartItem.setBook(bookRepository.getById(requestDto.getBookId()));
         cartItemRepository.save(cartItem);
-        shoppingCart.setCartItems(cartItemRepository.getAllByShoppingCart(shoppingCart));
-        return shoppingCartMapper.toDto(shoppingCart);
+        return shoppingCartMapper.toDto(getCartOrCreate(email));
     }
 
     @Override
@@ -54,7 +53,8 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         cartItem.setQuantity(requestDto.getQuantity());
         cartItemRepository.save(cartItem);
         ShoppingCart shoppingCart = cartItem.getShoppingCart();
-        shoppingCart.setCartItems(cartItemRepository.getAllByShoppingCart(shoppingCart));
+        shoppingCart.getCartItems()
+                .forEach(ci -> ci.setShoppingCart(null));
         return shoppingCartMapper.toDto(shoppingCart);
     }
 
@@ -63,10 +63,14 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         cartItemRepository.deleteById(id);
     }
 
+    @Transactional
     private ShoppingCart getCartOrCreate(String email) {
         User user = userRepository.getByEmail(email);
         Optional<ShoppingCart> optionalShoppingCart = shoppingCartRepository
-                .findByUser(user);
+                .findByUser_Id(user.getId());
+        optionalShoppingCart.ifPresent(shoppingCart -> shoppingCart
+                .getCartItems()
+                .forEach(ci -> ci.setShoppingCart(null)));
         return optionalShoppingCart
                 .orElseGet(() -> createCart(user));
     }
@@ -75,5 +79,9 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         ShoppingCart shoppingCart = new ShoppingCart();
         shoppingCart.setUser(user);
         return shoppingCartRepository.save(shoppingCart);
+    }
+
+    public ShoppingCart getInitializedCartEntity(String email) {
+        return getCartOrCreate(email);
     }
 }

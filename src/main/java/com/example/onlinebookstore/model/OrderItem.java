@@ -1,6 +1,5 @@
 package com.example.onlinebookstore.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -10,31 +9,38 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.Data;
+import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
 @Entity
-@Data
-@SQLDelete(sql = "UPDATE cart_items SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE order_items SET is_deleted = true WHERE id = ?")
 @Where(clause = "is_deleted = FALSE")
-@Table(name = "cart_items")
+@Table(name = "order_items")
 @NoArgsConstructor
-public class CartItem {
+@AllArgsConstructor
+@Getter
+@Setter
+@Builder
+public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @JsonBackReference
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shopping_cart_id")
-    private ShoppingCart shoppingCart;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_id", referencedColumnName = "id")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "order_id", referencedColumnName = "id", nullable = false)
+    private Order order;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "book_id", referencedColumnName = "id", nullable = false)
     private Book book;
     @Column(nullable = false)
     private Integer quantity;
+    @Column(nullable = false)
+    private BigDecimal price;
     @Column(nullable = false)
     private boolean isDeleted = false;
 }
